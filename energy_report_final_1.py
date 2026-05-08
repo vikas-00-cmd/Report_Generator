@@ -402,8 +402,15 @@ image_paths = []
 
 for idx, tname in enumerate(target_cols):
     plt.figure()
-    plt.plot(y_test.iloc[:, idx].values, label=f"Actual {tname}")
-    plt.plot(predictions[:, idx],        label=f"Predicted {tname}")
+    actual = y_test.iloc[:, idx].values
+    # FIX: Handle both single and multi-output predictions correctly
+    if len(target_cols) == 1:
+        pred = predictions.flatten()
+    else:
+        pred = predictions[:, idx]
+    
+    plt.plot(actual, label=f"Actual {tname}")
+    plt.plot(pred, label=f"Predicted {tname}")
     plt.legend()
     plt.title(f"{tname} Prediction")
     plt.xlabel("Samples")
@@ -438,7 +445,12 @@ model_name      = "Multi-output Linear Regression" if len(target_cols) > 1 else 
 per_target_metrics = {}
 for i, tname in enumerate(target_cols):
     actual = y_test.iloc[:, i].values
-    pred   = predictions[:, i]
+    # FIX: Handle both single and multi-output predictions correctly
+    if len(target_cols) == 1:
+        pred = predictions.flatten()
+    else:
+        pred = predictions[:, i]
+    
     mae    = mean_absolute_error(actual, pred)
     rmse   = np.sqrt(mean_squared_error(actual, pred))
     r2     = r2_score(actual, pred)
@@ -602,10 +614,15 @@ def _sustainability_improvements():
 
 def _future_predictions():
     predictions_text = []
-    future_features = X.mean() * 1.1
-    future_pred = model.predict(future_features.to_frame().T)
+    future_features = X.mean().to_frame().T
+    future_pred = model.predict(future_features)
+    
     for i, tname in enumerate(target_cols):
-        pred_val = future_pred[0][i] if len(target_cols) > 1 else future_pred[0].item()
+        # FIX: Handle both single and multi-output predictions correctly
+        if len(target_cols) == 1:
+            pred_val = future_pred[0]
+        else:
+            pred_val = future_pred[0, i]
         predictions_text.append(f"• We predict your {tname} energy use next time might be around {pred_val:.2f} units.")
     predictions_text.append("• This is just an estimate based on current patterns.")
     return "\n".join(predictions_text)
@@ -716,6 +733,16 @@ SUSTAINABILITY IMPROVEMENTS
 DATA SUMMARY
 {section_sep}
 {_data_quality_section()}
+
+{section_sep}
+PER-TARGET MODEL METRICS
+{section_sep}
+{"".join(per_target_blocks)}
+
+{section_sep}
+RECOMMENDATIONS FOR IMPROVEMENT
+{section_sep}
+{_recommendations(per_target_metrics)}
 
 {'=' * 60}
 END OF ENERGY REPORT
